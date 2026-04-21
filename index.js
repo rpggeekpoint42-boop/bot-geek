@@ -1,67 +1,200 @@
-const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason } = require("@whiskeysockets/baileys");
-
-const prefix = "$";
-let comandosUsados = 0;
+import makeWASocket, { useMultiFileAuthState } from '@whiskeysockets/baileys'
+import P from 'pino'
 
 async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("auth");
-  const { version } = await fetchLatestBaileysVersion();
+const { state, saveCreds } = await useMultiFileAuthState('./auth')
 
-  const sock = makeWASocket({
-    version,
-    auth: state
-  });
+const sock = makeWASocket({
+auth: state,
+logger: P({ level: 'silent' }),
+printQRInTerminal: true
+})
 
-  sock.ev.on("creds.update", saveCreds);
+sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect } = update;
+let comandosUsados = 0
 
-    if (connection === "close") {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) startBot();
-    } else if (connection === "open") {
-      console.log("✅ Bot conectado!");
-    }
-  });
+// ================= QUESTS =================
+const quests = [
 
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    const msg = messages[0];
-    if (!msg.message) return;
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
 
-    const from = msg.key.remoteJid;
+❓ Pergunta
 
-    const text =
-      msg.message.conversation ||
-      msg.message.extendedTextMessage?.text ||
-      "";
+Qual é seu anime favorito?
 
-    // ❌ ignora mensagens sem prefixo
-    if (!text.startsWith(prefix)) return;
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
 
-    const comando = text.slice(prefix.length).trim().toLowerCase();
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
 
-    // 👇 COMANDO PING
-    if (comando === "ping") {
-      comandosUsados++;
+❓ Pergunta
 
-      const start = Date.now();
+Qual sua/seu protagonista favorito?
 
-      const grupos = await sock.groupFetchAllParticipating();
-      const totalGrupos = Object.keys(grupos).length;
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
 
-      const ping = Date.now() - start;
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
 
-      await sock.sendMessage(from, {
-        text:
-`🏓 Pong!
+❓ Pergunta
 
-⚡ Ping: ${ping} ms
-👥 Grupos: ${totalGrupos}
+Qual a diferença entre falha e ilusão?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+❓ Pergunta
+
+Qual a diferença entre golpes avançado e especial?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+⚔️ Desafio
+
+Dê bom dia/tarde/noite no grupo da sua raça ou classe
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+⚔️ Desafio
+
+Vá no chat global e deseje bom dia/tarde/noite
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+⚔️ Desafio
+
+Em uma batalha, habilidade ganha de golpes?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+⚔️ Desafio
+
+Desafie seu chefe de raça/mestre para um duelo
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+❓ Pergunta
+
+Qual habilidade pode matar o adversário de uma só vez?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+❓ Pergunta
+
+Qual a diferença entre ataques e golpes?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+❓ Pergunta
+
+Entre paralisia com dano e sem dano, qual vence?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+⚔️ Desafio
+
+Vá no chat global e deseje bom dia/tarde/noite
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+⚔️ Desafio
+
+Em uma batalha, habilidade ganha de golpes?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+⚔️ Desafio
+
+Desafie seu chefe de raça/mestre para um duelo
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`,
+
+`➖✦➖✦➖ ᯓ ᎒•' 👾'•᎒ ᯓ ➖✦➖✦➖
+📜 QUEST GEEKPOINT
+
+❓ Pergunta
+
+O que você está achando do sistema de quest?
+
+➖✦➖✦➖ ᯓ ᎒•'🎯'•᎒ ᯓ ➖✦➖✦➖`
+]
+
+// ================= MENSAGENS =================
+sock.ev.on('messages.upsert', async ({ messages }) => {
+const msg = messages?.[0]
+if (!msg || !msg.message) return
+
+const text =  
+  msg.message.conversation ||  
+  msg.message.extendedTextMessage?.text  
+
+if (!text) return  
+
+const from = msg.key.remoteJid  
+
+// ================= QUEST =================  
+if (text.toLowerCase() === '$quest') {  
+  comandosUsados++  
+
+  const random = quests[Math.floor(Math.random() * quests.length)]  
+
+  await sock.sendMessage(from, { text: random })  
+}  
+
+// ================= PING =================  
+if (text.toLowerCase() === '$ping') {  
+  comandosUsados++  
+
+  const start = Date.now()  
+
+  const groups = await sock.groupFetchAllParticipating()  
+  const groupCount = Object.keys(groups).length  
+
+  const ping = Date.now() - start  
+
+  await sock.sendMessage(from, {  
+    text: `🏓 PONG!
+
+⚡ Ping: ${ping}ms
+👥 Grupos ativos: ${groupCount}
 📊 Comandos usados: ${comandosUsados}`
-      });
-    }
-  });
+})
+}
+})
 }
 
-startBot();
+startBot()
