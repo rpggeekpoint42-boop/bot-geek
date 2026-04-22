@@ -1,59 +1,83 @@
-import makeWASocket, { useMultiFileAuthState } from '@whiskeysockets/baileys'
-import P from 'pino'
+const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason } = require("@whiskeysockets/baileys")
+const readline = require("readline")
+
+let comandosUsados = 0
 
 async function startBot() {
-  try {
-    const { state, saveCreds } = await useMultiFileAuthState('./auth')
+  const { state, saveCreds } = await useMultiFileAuthState("auth")
+  const { version } = await fetchLatestBaileysVersion()
 
-    const sock = makeWASocket({
-      auth: state,
-      logger: P({ level: 'silent' }),
-      printQRInTerminal: true
-    })
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 0
+  })
 
-    sock.ev.on('creds.update', saveCreds)
+  sock.ev.on("creds.update", saveCreds)
 
-    let comandosUsados = 0
+  sock.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect } = update
 
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-      const msg = messages?.[0]
-      if (!msg || !msg.message) return
+    if (connection === "close") {
+      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
+      console.log("Reconectando...", shouldReconnect)
+      if (shouldReconnect) startBot()
+    }
 
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text
+    if (connection === "open") {
+      console.log("✅ Bot conectado!")
+    }
 
-      if (!text) return
+    if (connection === "connecting" && !sock.authState.creds.registered) {
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      })
 
-      const from = msg.key.remoteJid
+      rl.question("Digite seu número (ex: 5511999999999): ", async (numero) => {
+        const code = await sock.requestPairingCode(numero)
+        console.log("🔑 Código:", code)
+        rl.close()
+      })
+    }
+  })
 
-      // ================= PING =================
-      if (text.toLowerCase() === '$ping') {
-        comandosUsados++
+  sock.ev.on("messages.upsert", async ({ messages }) => {
+    const msg = messages[0]
+    if (!msg.message) return
 
-        const start = Date.now()
+    const from = msg.key.remoteJid
+    const isGroup = from.endsWith("@g.us")
 
-        const groups = await sock.groupFetchAllParticipating()
-        const groupCount = Object.keys(groups).length
+    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ""
 
-        const ping = Date.now() - start
+    if (!text) return
 
-        await sock.sendMessage(from, {
-          text:
+    // =========================
+    // COMANDO PING
+    // =========================
+    if (text.toLowerCase() === "$ping") {
+      comandosUsados++
+
+      const start = Date.now()
+
+      const grupos = Object.keys(sock.chats || {}).filter(jid => jid.endsWith("@g.us")).length
+
+      const end = Date.now()
+      const ping = end - start
+
+      await sock.sendMessage(from, {
+        text:
 `🏓 PONG!
 
-⚡ Ping: ${ping}ms
-👥 Grupos ativos: ${groupCount}
-📊 Comandos usados: ${comandosUsados}`
-        })
-      }
-    })
+⚡ Velocidade: ${ping}ms
+📊 Comandos usados: ${comandosUsados}
+👥 Grupos: ${grupos}`
+      })
+    }
 
-    console.log('Bot iniciado com sucesso!')
-
-  } catch (err) {
-    console.log('ERRO NO BOT:', err)
-  }
+  })
 }
 
 startBot()
